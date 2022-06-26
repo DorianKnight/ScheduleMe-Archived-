@@ -117,18 +117,24 @@ class Schedule:
         #Then take the difference between the mean and each individual event on the user schedule
 
         n = len(self.compareList)
+        #print(n)
         totalStartTime = 0.0
         zeroTime = datetime.datetime.strptime('00:00',"%H:%M")
         totalDuration = 0.0
         for item in self.compareList:
             startTime = datetime.datetime.strptime(item[0][1],"%H:%M")
             timeDelta = (startTime - zeroTime).total_seconds()/3600
+            print(timeDelta)
             totalStartTime += timeDelta
             duration = item[0][2]
             totalDuration += duration
 
         averageStartTime = totalStartTime/n #This is the average hour that I have an event at
         averageDuration = totalDuration/n
+
+        # print("Total start time: ", totalStartTime)
+        # print("Average start time: ", averageStartTime)
+        # print("Average duration: ", averageDuration)
 
         #Calculate the SSmean by finding the distance from each user schedule point to the average line on the template schedule    
 
@@ -137,11 +143,16 @@ class Schedule:
             userDuration = userVal[1][2]
 
             timeDiff = averageStartTime - (userStart - zeroTime).total_seconds()/3600
+            # print("\nAverage start time: ",averageStartTime)
+            # print("User start time: ",userStart)
+            # print("Time diff: ",timeDiff)
             durationDiff = averageDuration - userDuration
 
             SSmean += pow(timeDiff,2) + pow(durationDiff,2)
         
         corellationCoeff = (SSmean - SSfit)/SSmean
+        print(SSmean)
+        print(SSfit)
 
         return corellationCoeff
 
@@ -149,8 +160,8 @@ class Schedule:
 
 def main():
     Controller = Schedule()
-    print(Controller.userSchedule)
-    print(Controller.compareList)
+    # print(Controller.userSchedule)
+    # print(Controller.compareList)
     print("\n\n","Your correlation coefficient is",Controller.correlationCoefficient())
 
 if __name__ == '__main__':
