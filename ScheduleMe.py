@@ -3,6 +3,7 @@ from __future__ import print_function
 
 import datetime
 import os.path
+from re import template
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -31,8 +32,11 @@ if os.path.exists('token.json'):
 try:
     service = build('calendar', 'v3', credentials=creds)
     now = datetime.datetime.utcnow().isoformat() + '-04:00'
-    startOfDay = str(datetime.date.today())+'T00:00:00-04:00'
-    endOfDay = str(datetime.date.today())+'T23:59:00-04:00'
+    # startOfDay = str(datetime.date.today())+'T00:00:00-04:00'
+    # endOfDay = str(datetime.date.today())+'T23:59:00-04:00'
+    #Change the date for testing purposes
+    startOfDay = str('2022-06-30')+'T00:00:00-04:00'
+    endOfDay = str('2022-06-30')+'T23:59:00-04:00'
 except HttpError as error:
     print('An error occurred: %s' % error)
 
@@ -41,6 +45,10 @@ class Schedule:
         self.templateSchedule = self.getTemplate()
         self.userSchedule = self.getUser()
         self.compareList = self.filterUserSchedule()
+        self.graphFormat = self.formatForGraphing()
+        self.meanTime = 0
+        self.meanDuration = 0
+        
     def getTemplate(self):
         rawData = self.getEventsList('utg1uq5vc83biaq2p9n9cqq32k@group.calendar.google.com')
         return self.FormatItems(rawData)
@@ -124,7 +132,7 @@ class Schedule:
         for item in self.compareList:
             startTime = datetime.datetime.strptime(item[0][1],"%H:%M")
             timeDelta = (startTime - zeroTime).total_seconds()/3600
-            print(timeDelta)
+            #print(timeDelta)
             totalStartTime += timeDelta
             duration = item[0][2]
             totalDuration += duration
@@ -132,17 +140,25 @@ class Schedule:
         averageStartTime = totalStartTime/n #This is the average hour that I have an event at
         averageDuration = totalDuration/n
 
+        self.meanTime = averageStartTime
+        self.meanDuration = averageDuration
+
         # print("Total start time: ", totalStartTime)
         # print("Average start time: ", averageStartTime)
         # print("Average duration: ", averageDuration)
 
         #Calculate the SSmean by finding the distance from each user schedule point to the average line on the template schedule    
-
+        print(self.compareList)
         for userVal in self.compareList:
             userStart = datetime.datetime.strptime(userVal[1][1],"%H:%M")
             userDuration = userVal[1][2]
 
             timeDiff = averageStartTime - (userStart - zeroTime).total_seconds()/3600
+
+            #print("User time: ",userStart)
+            #print("Delta: ",(userStart - zeroTime).total_seconds()/3600)
+
+
             # print("\nAverage start time: ",averageStartTime)
             # print("User start time: ",userStart)
             # print("Time diff: ",timeDiff)
@@ -156,6 +172,24 @@ class Schedule:
 
         return corellationCoeff
 
+    def formatForGraphing(self):
+        graphFormat = []
+        for item in self.compareList:
+            templateArray = item[0]
+            userArray = item[1]
+            
+            zeroTime = datetime.datetime.strptime('00:00',"%H:%M")
+            tempTime = datetime.datetime.strptime(templateArray[1],"%H:%M")
+            userTime = datetime.datetime.strptime(userArray[1],"%H:%M")
+            correctedTempTime = (tempTime - zeroTime).total_seconds()/3600
+            correctedUserTime = (userTime - zeroTime).total_seconds()/3600
+
+            # templateArray[1] = correctedTempTime
+            # userArray[1] = correctedUserTime
+
+            graphFormat.append([[templateArray[0],correctedTempTime,templateArray[2]],[userArray[0],correctedUserTime,userArray[2]]])
+        return graphFormat
+
 
 
 def main():
@@ -163,6 +197,7 @@ def main():
     # print(Controller.userSchedule)
     # print(Controller.compareList)
     print("\n\n","Your correlation coefficient is",Controller.correlationCoefficient())
+    print("\n",Controller.graphFormat)
 
 if __name__ == '__main__':
     main()
