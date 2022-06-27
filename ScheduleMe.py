@@ -32,11 +32,11 @@ if os.path.exists('token.json'):
 try:
     service = build('calendar', 'v3', credentials=creds)
     now = datetime.datetime.utcnow().isoformat() + '-04:00'
-    # startOfDay = str(datetime.date.today())+'T00:00:00-04:00'
-    # endOfDay = str(datetime.date.today())+'T23:59:00-04:00'
+    startOfDay = str(datetime.date.today())+'T00:00:00-04:00'
+    endOfDay = str(datetime.date.today())+'T23:59:00-04:00'
     #Change the date for testing purposes
-    startOfDay = str('2022-06-30')+'T00:00:00-04:00'
-    endOfDay = str('2022-06-30')+'T23:59:00-04:00'
+    #startOfDay = str('2022-06-30')+'T00:00:00-04:00'
+    #endOfDay = str('2022-06-30')+'T23:59:00-04:00'
 except HttpError as error:
     print('An error occurred: %s' % error)
 
@@ -167,8 +167,8 @@ class Schedule:
             SSmean += pow(timeDiff,2) + pow(durationDiff,2)
         
         corellationCoeff = (SSmean - SSfit)/SSmean
-        print(SSmean)
-        print(SSfit)
+        print("SSmean", SSmean)
+        print("SSfit", SSfit)
 
         return corellationCoeff
 

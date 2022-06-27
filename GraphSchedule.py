@@ -9,7 +9,7 @@ ax = plt.axes(projection='3d')
 Calendar = Schedule()
 rawData = Calendar.graphFormat
 print(Calendar.graphFormat)
-Calendar.correlationCoefficient()
+print("Correlation coefficient",Calendar.correlationCoefficient())
 
 #Isolate the data into arrays for each axis
 xTrendData = []
