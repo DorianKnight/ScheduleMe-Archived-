@@ -42,12 +42,15 @@ except HttpError as error:
 
 class Schedule:
     def __init__(self):
+        self.meanTime = 0
+        self.meanDuration = 0
+        self.corrCoeff = 0
         self.templateSchedule = self.getTemplate()
         self.userSchedule = self.getUser()
         self.compareList = self.filterUserSchedule()
         self.graphFormat = self.formatForGraphing()
-        self.meanTime = 0
-        self.meanDuration = 0
+        
+        
         
     def getTemplate(self):
         rawData = self.getEventsList('utg1uq5vc83biaq2p9n9cqq32k@group.calendar.google.com')
@@ -65,7 +68,7 @@ class Schedule:
         return apiEventReturnUser.get('items',[])
     
     def FormatItems(self,rawData):
-        #Takes the calendaritem data and constructs a simplified list containing the event description, start time and duration
+        #Takes the calendar item data and constructs a simplified list containing the event description, start time and duration
         schedule = []
         for item in rawData:
             if item['start'].get('dateTime') != "None":
@@ -82,48 +85,25 @@ class Schedule:
         return schedule
 
     def filterUserSchedule(self):
-        #Create a list containing all of the event titles within the template list
-        templateEventNames = []
         filteredUser = []
-        for item in self.templateSchedule:
-            title = item[0]
-            templateEventNames.append(title)
-        
-        #Search for the template event names within the user schedule and append found lists to the filtered user schedule
-        # for item in templateEventNames:
-        #     for listItem in self.userSchedule:
-        #         if item == listItem[0]:
-        #             filteredUser.append(listItem)
 
-        #Create a list where each index contains the template event and its user event counterpart
+        #Create list with template events are paired with the user events
         for tItem in self.templateSchedule:
+            found = False
             for uItem in self.userSchedule:
                 if tItem[0] == uItem[0]:
                     filteredUser.append([tItem,uItem])
-
+                    found = True
+            if not found:
+                filteredUser.append([tItem,["Placeholder", "Placeholder", "Placeholder"]])
+        #print("Filtered user",filteredUser,"\n")
         return filteredUser
 
     def correlationCoefficient(self):
         #This function follows the process written on the notion document to determine how similar both schedules are to eachother
         SSfit = 0.0
         SSmean = 0.0
-
-        #Treat start time as y and duration as z while the individual discontinuous event represents x
-        for pair in self.compareList:
-            userStart = datetime.datetime.strptime(pair[1][1],"%H:%M")
-            templateStart = datetime.datetime.strptime(pair[0][1],"%H:%M") 
-
-            userDuration = pair[1][2]
-            templateDuration = pair[0][2]
-
-            ydiff = (userStart - templateStart).total_seconds()/3600
-            zdiff = userDuration - templateDuration
-
-            SSfit += pow(ydiff,2) + pow(zdiff,2)
         
-        #Calculate the mean start time and duration within the template schedule
-        #Then take the difference between the mean and each individual event on the user schedule
-
         n = len(self.compareList)
         #print(n)
         totalStartTime = 0.0
@@ -143,17 +123,63 @@ class Schedule:
         self.meanTime = averageStartTime
         self.meanDuration = averageDuration
 
+        #Replace all placeholders with the average start time and average duration
+        
+        for item in self.compareList:
+            userItem = item[1]
+            tempItem = item[0]
+            if userItem[0] == "Placeholder":
+                userItem[0] = tempItem[0]
+                userItem[1] = self.meanTime
+                userItem[2] = self.meanDuration
+
+        #print(self.compareList,"\n")
         # print("Total start time: ", totalStartTime)
         # print("Average start time: ", averageStartTime)
         # print("Average duration: ", averageDuration)
 
+        #Treat start time as y and duration as z while the individual discontinuous event represents x
+        for pair in self.compareList:
+
+            userStart = 0
+            if (type(pair[1][1]) == float):
+                userStart = pair[1][1]
+            else:
+                userStart = datetime.datetime.strptime(pair[1][1],"%H:%M")
+            templateStart = datetime.datetime.strptime(pair[0][1],"%H:%M") 
+
+            userDuration = pair[1][2]
+            templateDuration = pair[0][2]
+
+            ydiff = 0
+            if type(userStart) == float:
+                ydiff = userStart - (templateStart-zeroTime).total_seconds()/3600
+            else:    
+                ydiff = (userStart - templateStart).total_seconds()/3600
+            zdiff = userDuration - templateDuration
+
+            SSfit += pow(ydiff,2) + pow(zdiff,2)
+        
+        #Calculate the mean start time and duration within the template schedule
+        #Then take the difference between the mean and each individual event on the user schedule
+
+        
+
         #Calculate the SSmean by finding the distance from each user schedule point to the average line on the template schedule    
-        print(self.compareList)
+        #print(self.compareList)
         for userVal in self.compareList:
-            userStart = datetime.datetime.strptime(userVal[1][1],"%H:%M")
+            userStart = 0
+            if (type(userVal[1][1]) != float):
+                userStart = datetime.datetime.strptime(userVal[1][1],"%H:%M")
+            else:
+                userStart = userVal[1][1]
             userDuration = userVal[1][2]
 
-            timeDiff = averageStartTime - (userStart - zeroTime).total_seconds()/3600
+            timeDiff = 0
+            if type(userStart) != float:
+                timeDiff = averageStartTime - (userStart - zeroTime).total_seconds()/3600
+            else:
+                timeDiff = averageStartTime - userStart
 
             #print("User time: ",userStart)
             #print("Delta: ",(userStart - zeroTime).total_seconds()/3600)
@@ -174,15 +200,24 @@ class Schedule:
 
     def formatForGraphing(self):
         graphFormat = []
+        self.corrCoeff = self.correlationCoefficient()
+        #print(self.compareList)
         for item in self.compareList:
             templateArray = item[0]
             userArray = item[1]
             
             zeroTime = datetime.datetime.strptime('00:00',"%H:%M")
             tempTime = datetime.datetime.strptime(templateArray[1],"%H:%M")
-            userTime = datetime.datetime.strptime(userArray[1],"%H:%M")
+            userTime = 0
+            correctedUserTime = 0
+            if type(userArray[1]) == float:
+                userTime = userArray[1]
+                correctedUserTime = userTime
+            else:
+                userTime = datetime.datetime.strptime(userArray[1],"%H:%M")
+                correctedUserTime = (userTime - zeroTime).total_seconds()/3600
             correctedTempTime = (tempTime - zeroTime).total_seconds()/3600
-            correctedUserTime = (userTime - zeroTime).total_seconds()/3600
+            
 
             # templateArray[1] = correctedTempTime
             # userArray[1] = correctedUserTime
@@ -196,8 +231,8 @@ def main():
     Controller = Schedule()
     # print(Controller.userSchedule)
     # print(Controller.compareList)
-    print("\n\n","Your correlation coefficient is",Controller.correlationCoefficient())
-    print("\n",Controller.graphFormat)
+    print("\n\n","Your correlation coefficient is",Controller.corrCoeff)
+    #print("\n",Controller.graphFormat)
 
 if __name__ == '__main__':
     main()
