@@ -18,16 +18,16 @@ creds = None
 if os.path.exists('token.json'):
     creds = Credentials.from_authorized_user_file('token.json', SCOPES)
     # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
+if not creds or not creds.valid:
+    if creds and creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+    else:
+        flow = InstalledAppFlow.from_client_secrets_file(
+            'credentials.json', SCOPES)
+        creds = flow.run_local_server(port=0)
+    # Save the credentials for the next run
+    with open('token.json', 'w') as token:
+        token.write(creds.to_json())
 
 try:
     service = build('calendar', 'v3', credentials=creds)
@@ -35,8 +35,8 @@ try:
     startOfDay = str(datetime.date.today())+'T00:00:00-04:00'
     endOfDay = str(datetime.date.today())+'T23:59:00-04:00'
     #Change the date for testing purposes
-    #startOfDay = str('2022-06-30')+'T00:00:00-04:00'
-    #endOfDay = str('2022-06-30')+'T23:59:00-04:00'
+    #startOfDay = str('2022-08-7')+'T00:00:00-04:00'
+    #endOfDay = str('2022-08-7')+'T23:59:00-04:00'
 except HttpError as error:
     print('An error occurred: %s' % error)
 
